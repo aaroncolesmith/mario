@@ -24,7 +24,11 @@
   #prize{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
     background:rgba(0,0,0,.85);opacity:0;pointer-events:none;transition:opacity 1.5s ease}
   #prize.show{opacity:1;pointer-events:auto}
-  #prize img{max-width:92vw;max-height:88vh;border:4px solid #fcfcfc;box-shadow:0 0 0 4px #c84c0c;image-rendering:auto}
+  #prize{flex-direction:column;justify-content:flex-start;gap:16px;padding:0 0 16px;box-sizing:border-box}
+  #banner{width:100%;background:#000;color:#fcfcfc;text-align:center;font:clamp(10px,2.6vw,20px)/1.6 'Press Start 2P',monospace;
+    padding:calc(14px + env(safe-area-inset-top)) 16px 14px;box-sizing:border-box;border-bottom:4px solid #c84c0c}
+  #banner .big{color:#fc9838;font-size:1.3em}
+  #prize img{max-width:92vw;max-height:calc(100vh - 170px);margin:auto;border:4px solid #fcfcfc;box-shadow:0 0 0 4px #c84c0c;image-rendering:auto}
   #gate{position:fixed;inset:0;z-index:10;background:#000;display:flex;flex-direction:column;gap:18px;
     align-items:center;justify-content:center;font:12px 'Press Start 2P',monospace;color:#fcfcfc;padding:16px;text-align:center}
   #gate[hidden]{display:none}
@@ -46,7 +50,7 @@
   <button type="submit">START</button>
   <div class="err" id="pwerr"></div>
 </form>
-<div id="prize"><img id="prizeImg" alt=""></div>
+<div id="prize"><div id="banner"><div class="big" id="bannerName"></div><div>NEXT LEVEL COMING MAY 2027</div></div><img id="prizeImg" alt=""></div>
 <div id="tc">
   <div class="grp"><button data-k="left">&#9664;</button><button data-k="down">&#9660;</button><button data-k="right">&#9654;</button></div>
   <div class="grp ab"><button data-k="run">B</button><button data-k="jump">A</button></div>
@@ -904,7 +908,10 @@ function updateFx() {
 function updatePlay() {
   if (game.room && game.prize) {
     game.prize++;
-    if (game.prize === 240) document.getElementById('prize').classList.add('show');
+    if (game.prize === 240) {
+      document.getElementById('bannerName').textContent = 'CONGRATS ' + CH().title;
+      document.getElementById('prize').classList.add('show');
+    }
   }
   if (game.room && game.prize > 60 && (input.startP || input.tapP || prizeTap)) { startIntro(); return; }
   if (input.startP && M.state === 'normal') { game.paused = !game.paused; SFX.pause(); }
