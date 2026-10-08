@@ -25,6 +25,13 @@
     background:rgba(0,0,0,.85);opacity:0;pointer-events:none;transition:opacity 1.5s ease}
   #prize.show{opacity:1;pointer-events:auto}
   #prize img{max-width:92vw;max-height:88vh;border:4px solid #fcfcfc;box-shadow:0 0 0 4px #c84c0c;image-rendering:auto}
+  #gate{position:fixed;inset:0;z-index:10;background:#000;display:flex;flex-direction:column;gap:18px;
+    align-items:center;justify-content:center;font:12px 'Press Start 2P',monospace;color:#fcfcfc;padding:16px;text-align:center}
+  #gate[hidden]{display:none}
+  #gate input,#gate button{font:inherit;padding:10px 12px;border:3px solid #fcfcfc;background:#000;color:#fcfcfc;
+    text-align:center;width:min(260px,80vw);box-sizing:border-box}
+  #gate button{background:#c84c0c;cursor:pointer}
+  #gate .err{color:#fc9838;min-height:1em}
   @media (pointer:coarse){
     #tc{display:flex}
     @media (orientation:portrait){#wrap{align-items:flex-start;padding-top:env(safe-area-inset-top)}}
@@ -33,7 +40,13 @@
 </head>
 <body>
 <div id="wrap"><canvas id="game" width="256" height="240"></canvas></div>
-<div id="prize"><img src="prize.jpg" alt=""></div>
+<form id="gate">
+  <div>ENTER PASSWORD</div>
+  <input id="pw" type="password" autocomplete="current-password" autofocus>
+  <button type="submit">START</button>
+  <div class="err" id="pwerr"></div>
+</form>
+<div id="prize"><img id="prizeImg" alt=""></div>
 <div id="tc">
   <div class="grp"><button data-k="left">&#9664;</button><button data-k="down">&#9660;</button><button data-k="right">&#9654;</button></div>
   <div class="grp ab"><button data-k="run">B</button><button data-k="jump">A</button></div>
@@ -68,12 +81,31 @@ const KEYMAP = {
 };
 const ACTIONS = ['left','right','down','jump','run','start'];
 const keys = {}, touchKeys = {}, input = {}, prevIn = {};
+let locked = true;
+async function unlock(pw) {
+  const buf = new Uint8Array(await (await fetch('prize.bin')).arrayBuffer());
+  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveKey']);
+  const key = await crypto.subtle.deriveKey({ name: 'PBKDF2', salt: buf.slice(0, 16), iterations: 200000, hash: 'SHA-256' },
+    base, { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
+  const img = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: buf.slice(16, 28) }, key, buf.slice(28));
+  document.getElementById('prizeImg').src = URL.createObjectURL(new Blob([img], { type: 'image/jpeg' }));
+  locked = false; document.getElementById('gate').hidden = true;
+  try { localStorage.setItem('smb11_pw', pw); } catch (e) {}
+}
+document.getElementById('gate').addEventListener('submit', async e => {
+  e.preventDefault();
+  const err = document.getElementById('pwerr'); err.textContent = '...';
+  try { await unlock(document.getElementById('pw').value.trim()); audio(); }
+  catch (x) { err.textContent = 'WRONG PASSWORD'; }
+});
+try { const saved = localStorage.getItem('smb11_pw'); if (saved) unlock(saved).catch(() => {}); } catch (e) {}
 addEventListener('keydown', e => {
+  if (locked) return;
   audio();
   if (e.code === 'KeyM') { muted = !muted; return; }
   const a = KEYMAP[e.code]; if (a) { keys[a] = true; e.preventDefault(); }
 });
-addEventListener('keyup', e => { const a = KEYMAP[e.code]; if (a) { keys[a] = false; e.preventDefault(); } });
+addEventListener('keyup', e => { if (locked) return; const a = KEYMAP[e.code]; if (a) { keys[a] = false; e.preventDefault(); } });
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
 document.querySelectorAll('#tc button').forEach(b => {
   const k = b.dataset.k;
@@ -794,6 +826,7 @@ function updatePlay() {
   }
 }
 function step() {
+  if (locked) return;
   readInput();
   game.frame++;
   switch (game.state) {
