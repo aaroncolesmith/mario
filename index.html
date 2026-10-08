@@ -117,7 +117,12 @@ document.querySelectorAll('#tc button').forEach(b => {
 });
 let canvasTap = false, prizeTap = false;
 document.getElementById('prize').addEventListener('pointerdown', () => { if (game.prize > 360) prizeTap = true; });
-cv.addEventListener('pointerdown', () => { audio(); canvasTap = true; });
+let tapX = 0, tapY = 0;
+cv.addEventListener('pointerdown', e => {
+  audio(); canvasTap = true;
+  const r = cv.getBoundingClientRect();
+  tapX = (e.clientX - r.left) / r.width * W; tapY = (e.clientY - r.top) / r.height * H;
+});
 function readInput() {
   for (const a of ACTIONS) {
     const h = !!(keys[a] || touchKeys[a]);
@@ -343,6 +348,93 @@ for (const n of ['s_stand', 's_walk1', 's_walk2', 's_dead']) ART[n] = SMALL_HEAD
 ART.s_jump = SMALL_HEAD.map(r => '.' + r.slice(0, 15)).concat(['................'], ART.s_jump.slice(8));
 for (const n of ['b_stand', 'b_walk1', 'b_walk2', 'b_jump', 'b_crouch']) ART[n] = BIG_HEAD.concat(ART[n].slice(9));
 
+// ---------------------------------------------------------------- characters
+// Bodies without heads. MAN_* reuse the classic overalls body; GIRL_* wear a dress (D).
+const MAN_S = { stand: ART.s_stand.slice(7), walk1: ART.s_walk1.slice(7), walk2: ART.s_walk2.slice(7),
+                jump: ART.s_jump.slice(7), dead: ART.s_dead.slice(7) };
+const MAN_B = { stand: ART.b_stand.slice(9), walk1: ART.b_walk1.slice(9), walk2: ART.b_walk2.slice(9),
+                jump: ART.b_jump.slice(9), crouch: ART.b_crouch.slice(9) };
+const GIRL_S = {
+  stand: ['.....DDDDD......','....DDDDDDD.....','...SDDDDDDDS....','..SSDDDDDDDSS...','..S.DDDDDDD.S...',
+          '...DDDDDDDDD....','..DDDDDDDDDDD...','....SS...SS.....','...BBB...BBB....'],
+  walk1: ['.....DDDDD......','....DDDDDDD.....','..SSDDDDDDDSS...','.SS.DDDDDDD.SS..','....DDDDDDD.....',
+          '...DDDDDDDDD....','..DDDDDDDDDDD...','..SS.......SS...','.BBB.......BBB..'],
+  walk2: ['.....DDDDD......','....DDDDDDD.....','....SDDDDDDS....','....SDDDDDDS....','....DDDDDDD.....',
+          '...DDDDDDDDD....','..DDDDDDDDDDD...','......SS........','.....BBBB.......'],
+  jump:  ['.....DDDDD..SS..','....DDDDDDDSS...','..SSDDDDDDD.....','.SS.DDDDDDD.....','....DDDDDDD.....',
+          '...DDDDDDDDD....','..DDDDDDDDDDD...','..SS......SSB...','.BBB........B...'],
+};
+GIRL_S.dead = GIRL_S.stand;
+const DRESS_TOP = ['....DDDDDDD.....','...DDDDDDDDD....','..DDDDDDDDDDD...','.SDDDDDDDDDDDS..','SSDDDDDDDDDDDSS.',
+  'SS.DDDDDDDDD.SS.','SS.DDDDDDDDD.SS.','S..DDDDDDDDD..S.','...DDDDDDDDD....','..DDDDDDDDDDD...','..DDDDDDDDDDD...',
+  '.DDDDDDDDDDDDD..','.DDDDDDDDDDDDD..','DDDDDDDDDDDDDDD.','DDDDDDDDDDDDDDD.','DDDDDDDDDDDDDDD.'];
+const GIRL_B = {
+  stand: DRESS_TOP.concat(['...SS.....SS....','...SS.....SS....','...SS.....SS....','...SS.....SS....',
+                           '...SS.....SS....','..BBBB....BBBB..','..BBBB....BBBB..']),
+  walk1: DRESS_TOP.concat(['..SS.......SS...','.SS.........SS..','.SS.........SS..','SS...........SS.',
+                           'SS...........SS.','BBB..........BBB','BBBB.........BBB']),
+  walk2: DRESS_TOP.concat(['.....SSSS.......','.....SSSS.......','.....SSSS.......','.....SSSS.......',
+                           '.....SSSS.......','....BBBBBB......','....BBBBBBB.....']),
+  jump:  DRESS_TOP.concat(['..SS.......SS...','.SS.........SSB.','SS...........BB.','BB..............',
+                           'BBB.............','................','................']),
+  crouch: ['.SDDDDDDDDDDDS..','SSDDDDDDDDDDDSS.','SSDDDDDDDDDDDSS.','DDDDDDDDDDDDDDD.','DDDDDDDDDDDDDDD.',
+           'DDDDDDDDDDDDDDD.','..BBBB....BBBB..','.BBBBB....BBBBB.'],
+};
+const GIRL_S_OVER = ['..HHH...........','..HHH...........','..HHH...........','...HH...........'];
+const GIRL_B_OVER = ['..HHHH..........','.HHHHH..........','.HHHHH..........','.HHHH...........',
+                     '.HHHH...........','..HHH...........','..HH............'];
+const GIRL_B_FACE = ['..HHHHSSKSSSKSS.','..HHHHSSKSSSKSS.','..HHHHSSSSSSSSS.','..HHHHSSSMMMSS..','..HHHHHSSSSSS...'];
+const GIRL_PAL = { S:'#d8a070', K:'#1a1010', M:'#b03040', F:'#fcfcfc', Y:'#f8d838' };
+const CHARS = [
+  { id: 'micah', name: 'MICAH', title: 'UNCLE MICAH', body: 'man',
+    sHead: SMALL_HEAD, bHead: BIG_HEAD, sOver: [], bOver: [],
+    pal: PAL.mario, fire: { R:'#fcfcfc', B:'#d82800' } },
+  { id: 'cherrie', name: 'CHERRIE', title: 'AUNTIE CHERRIE', body: 'man',
+    sHead: ['....HHHHHH......','...HHGHHHHHH....','..HHGHHHHHHHH...','..HGHSSKSSKSS...',
+            '..HHHSSSSSSSS...','..HGHSSMMMSS....','..HHHHSSSSS.....'],
+    bHead: ['.....HHHHHH.....','...HHHHGHHHHH...','..HHHHGHHHHHHH..','..HHHGHHSSSSSSH.','..HHGHSSKSSSKSS.',
+            '..HHGHSSKSSSKSS.','..HHHHSSSSSSSSS.','..HHGHSSSMMMSS..','..HHHHHSSSSSS...'],
+    sOver: ['..HGH...........','..HHH...........','..HGH...........','...H............'],
+    bOver: ['..HHGH..........','.HHHGH..........','.HHGHH..........','.HHGHH..........',
+            '.HHHH...........','..HGH...........','..HH............'],
+    pal: { R:'#3a5a8a', B:'#c83c64', S:'#d89a6a', H:'#2e1c14', G:'#a8a4a4', K:'#1a1010', M:'#b03040' },
+    fire: { R:'#fcfcfc', B:'#d82800' } },
+  { id: 'lily', name: 'LILY', title: 'BIG COUSIN LILY', body: 'girl',
+    sHead: ['....HHHHHH......','...HHHHHHHHH....','..FFHHHHHHHHH...','..FYHSSKSSKSS...',
+            '..HFHSSSSSSSS...','..HHHSSMMMSS....','..HHHHSSSSS.....'],
+    bHead: ['.....HHHHHH.....','...HHHHHHHHHH...','..FFFHHHHHHHHH..','..FYFHHSSSSSSH..',
+            '..HFHHSSKSSSKSS.'].concat(GIRL_B_FACE.slice(1)),
+    sOver: GIRL_S_OVER, bOver: GIRL_B_OVER,
+    pal: { ...GIRL_PAL, D:'#fcfcfc', H:'#3c2416', B:'#c89870' }, fire: { D:'#e83c1c' } },
+  { id: 'violet', name: 'VIOLET', title: 'BIG COUSIN VIOLET', body: 'girl',
+    sHead: ['....HHHHHFF.....','...HHHHHHFYF....','..HHHHHHHHFH....','..HHHSSKSSKSS...',
+            '..HHHSSSSSSSS...','..HHHSSMMMSS....','..HHHHSSSSS.....'],
+    bHead: ['.....HHHHHFFF...','...HHHHHHHFYF...','..HHHHHHHHHFHH..','..HHHHHSSSSSSH..'].concat(GIRL_B_FACE),
+    sOver: GIRL_S_OVER, bOver: GIRL_B_OVER,
+    pal: { ...GIRL_PAL, D:'#e8dcfc', H:'#24160e', B:'#b080d8' }, fire: { D:'#e83c1c' } },
+];
+function compose(head, body, over, shift) {
+  const sh = r => shift ? ('.'.repeat(shift) + r).slice(0, 16) : r.padEnd(16, '.');
+  const rows = head.map(sh).concat(body.map(r => r.padEnd(16, '.')));
+  over.forEach((o, i) => {
+    const j = head.length + i; if (j >= rows.length) return;
+    const ro = sh(o), r = rows[j].split('');
+    for (let x = 0; x < 16; x++) if (ro[x] !== '.') r[x] = ro[x];
+    rows[j] = r.join('');
+  });
+  return rows;
+}
+for (const c of CHARS) {
+  const sb = c.body === 'girl' ? GIRL_S : MAN_S, bb = c.body === 'girl' ? GIRL_B : MAN_B;
+  for (const k of ['stand', 'walk1', 'walk2', 'jump', 'dead']) ART[c.id + '_s_' + k] = compose(c.sHead, sb[k], c.sOver, k === 'jump' ? 1 : 0);
+  for (const k of ['stand', 'walk1', 'walk2', 'jump', 'crouch']) ART[c.id + '_b_' + k] = compose(c.bHead, bb[k], c.bOver, 0);
+  PAL[c.id + '_mario'] = c.pal;
+  PAL[c.id + '_fire'] = { ...c.pal, ...c.fire };
+  PAL[c.id + '_starA'] = { ...c.pal, R:'#0c9300', B:'#000000', S:'#fca044', D:'#0c9300' };
+  PAL[c.id + '_starB'] = { ...c.pal, R:'#d82800', B:'#fca044', S:'#fcfcfc', D:'#d82800' };
+}
+const CH = () => CHARS[game.char];
+
 const sprCache = {};
 function spr(name, pal) {
   const key = name + '|' + pal;
@@ -449,7 +541,7 @@ function physY(e, isMario) {
 const overlap = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 
 // ---------------------------------------------------------------- state
-const game = { state: 'title', score: 0, coins: 0, lives: 3, time: 400, frame: 0, timer: 0,
+const game = { state: 'title', char: 0, score: 0, coins: 0, lives: 3, time: 400, frame: 0, timer: 0,
   hi: 0, freeze: 0, freezeType: '', paused: false, flagY: 0, castleFlag: 0, tick: 0 };
 try { game.hi = +localStorage.getItem('smb11_hi') || 0; } catch (e) {}
 let M, camX = 0, enemies = [], items = [], fireballs = [], parts = [], pops = [], coinPops = [], bumps = [], spawnIdx = 0;
@@ -844,8 +936,20 @@ function step() {
   game.frame++;
   switch (game.state) {
     case 'title':
-      if (input.startP || input.jumpP || input.tapP) { audio(); newGame(); }
+      if (input.startP || input.jumpP || input.tapP) { audio(); game.state = 'select'; SFX.coin(); }
       break;
+    case 'select': {
+      const pick = i => { if (i !== game.char) { game.char = i; SFX.kick(); } };
+      if (input.leftP) pick((game.char + CHARS.length - 1) % CHARS.length);
+      if (input.rightP) pick((game.char + 1) % CHARS.length);
+      let go = input.startP || input.jumpP;
+      if (input.tapP && tapY > 56 && tapY < 176) {
+        const i = Math.max(0, Math.min(CHARS.length - 1, Math.floor(tapX / 64)));
+        if (i === game.char) go = true; else pick(i);
+      } else if (input.tapP && tapY >= 176) go = true;
+      if (go) { SFX.power(); newGame(); }
+      break;
+    }
     case 'intro':
       if (--game.timer <= 0) { resetLevel(); game.state = 'play'; }
       break;
@@ -864,7 +968,7 @@ function text(s, x, y, color = '#fcfcfc', align = 'left') {
   ctx.fillText(s, x, y);
 }
 function drawHUD() {
-  text('MARIO', 24, 16);
+  text(CH().name, 24, 16);
   text(String(game.score).padStart(6, '0'), 24, 24);
   const cf = [0, 0, 0, 1, 2, 1][Math.floor(game.frame / 8) % 6];
   ctx.fillStyle = ['#fc9838', '#c84c0c', '#883800'][cf];
@@ -1041,7 +1145,7 @@ function drawMario(cx) {
     else name = pre + 'stand';
     if (m.skid) name = pre + 'walk2';
   }
-  const img = spr(name, pal);
+  const img = spr(CH().id + '_' + name, CH().id + '_' + pal);
   // during grow/shrink the hitbox is the final size; anchor sprite to feet
   draw(img, m.x - cx - 2, m.y + m.h - img.height, m.facing < 0);
 }
@@ -1089,14 +1193,31 @@ function render() {
     drawHUD();
     if (game.state === 'intro') {
       text('WORLD 1-1', 128, 80, '#fcfcfc', 'center');
-      ctx.drawImage(spr('s_stand', 'mario'), 96, 108);
+      ctx.drawImage(spr(CH().id + '_s_stand', CH().id + '_mario'), 96, 108);
       text('×  ' + game.lives, 122, 112);
     } else text('GAME OVER', 128, 112, '#fcfcfc', 'center');
     return;
   }
   drawWorld();
   drawHUD();
-  if (game.state === 'title') {
+  if (game.state === 'select') {
+    ctx.fillStyle = 'rgba(0,0,0,.78)'; ctx.fillRect(0, 36, W, H - 36);
+    text('SELECT YOUR PLAYER', 128, 46, '#fcfcfc', 'center');
+    CHARS.forEach((c, i) => {
+      const sel = i === game.char, x = i * 64 + 16, y = 72;
+      if (sel) {
+        ctx.fillStyle = (game.frame >> 3) & 1 ? '#fc9838' : '#c84c0c';
+        ctx.fillRect(x - 6, y - 6, 44, 76); ctx.fillStyle = '#000'; ctx.fillRect(x - 4, y - 4, 40, 72);
+      }
+      const f = sel ? ['stand', 'walk1', 'walk2'][Math.floor(game.frame / 8) % 3] : 'stand';
+      ctx.drawImage(spr(c.id + '_b_' + f, c.id + '_mario'), x, y, 32, 64);
+      text(c.name, i * 64 + 32, 152, sel ? '#fc9838' : '#fcfcfc', 'center');
+    });
+    text(CH().title, 128, 176, '#fcbcb0', 'center');
+    const touch = matchMedia('(pointer:coarse)').matches;
+    if ((game.frame >> 4) & 1) text(touch ? 'TAP TO CHOOSE, TAP AGAIN' : '\u2190 \u2192 CHOOSE   ENTER START', 128, 204, '#fcfcfc', 'center');
+    if (touch && (game.frame >> 4) & 1) text('TO START', 128, 216, '#fcfcfc', 'center');
+  } else if (game.state === 'title') {
     ctx.fillStyle = '#000'; ctx.fillRect(38, 46, 180, 92);
     ctx.fillStyle = '#c84c0c'; ctx.fillRect(40, 48, 176, 88);
     ctx.fillStyle = '#fcbcb0'; ctx.fillRect(40, 48, 176, 2); ctx.fillRect(40, 48, 2, 88);
@@ -1130,7 +1251,7 @@ function render() {
     ctx.restore();
     if (game.prize > 20) {
       const gold = (game.frame >> 3) & 1 ? '#fc9838' : '#fcfcfc';
-      text('CONGRATS UNCLE MICAH', 128, 78, gold, 'center');
+      text('CONGRATS ' + CH().title, 128, 78, gold, 'center');
       text('NEXT LEVEL COMING', 128, 96, '#fcfcfc', 'center');
       text('MAY 2027', 128, 108, '#fcfcfc', 'center');
     }
