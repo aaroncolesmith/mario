@@ -157,6 +157,7 @@ const PAL = {
   starY: { Y:'#fca044', K:'#000000' },
   starW: { Y:'#fcfcfc', K:'#000000' },
   tile:  { O:'#c84c0c', L:'#fcbcb0', D:'#000000' },
+  tileU: { O:'#00808c', L:'#a4e4fc', D:'#000000' },
   q0:    { Y:'#fc9838', M:'#c84c0c', O:'#c84c0c', D:'#000000' },
   q1:    { Y:'#e07c2c', M:'#a03c08', O:'#c84c0c', D:'#000000' },
   q2:    { Y:'#c86420', M:'#883000', O:'#c84c0c', D:'#000000' },
@@ -410,7 +411,23 @@ function resetLevel() {
         t: 0, hidden: false, fireT: 0, prevY: 0 };
   camX = 0; enemies = []; items = []; fireballs = []; parts = []; pops = []; coinPops = []; bumps = [];
   spawnIdx = 0; game.time = 400; game.tick = 0; game.freeze = 0; game.paused = false;
-  game.flagY = POLE_TOP + 8; game.castleFlag = 0;
+  game.flagY = POLE_TOP + 8; game.castleFlag = 0; game.room = false; game.prize = 0;
+}
+
+// ---------------------------------------------------------------- prize room
+function enterPrizeRoom() {
+  const power = M.power;
+  resetLevel();
+  map = []; contents = {};
+  for (let y = 0; y < LH; y++) map.push(new Array(LW).fill(' '));
+  for (let x = 0; x < 16; x++) { map[3][x] = 'X'; map[13][x] = 'X'; map[14][x] = 'X'; }
+  for (let y = 3; y < LH; y++) { map[y][0] = 'X'; map[y][15] = 'X'; }
+  map[9][7] = '?'; contents['7,9'] = 'prize';
+  spawnIdx = SPAWNS.length;
+  game.room = true;
+  M.x = 32; M.power = power;
+  if (power > 0) { M.h = 32; M.y = 13 * T - 32; }
+  SFX.sprout();
 }
 function saveHi() {
   if (game.score > game.hi) { game.hi = game.score; try { localStorage.setItem('smb11_hi', game.hi); } catch (e) {} }
@@ -460,7 +477,7 @@ function updateMario() {
     return;
   }
   if (m.state === 'done') {
-    if (input.startP || input.jumpP || input.tapP) startIntro();
+    if (input.jumpP || input.tapP) enterPrizeRoom();
     return;
   }
 
@@ -589,6 +606,11 @@ function bumpTile(tx, ty) {
 
 function giveContent(what, tx, ty) {
   const x = tx * T, y = ty * T;
+  if (what === 'prize') {
+    game.prize = 1; SFX.power(); setTimeout(SFX.clear, 600);
+    for (let i = 0; i < 6; i++) coinPops.push({ x: x + 4 + (i - 2.5) * 10, y: y - 14, vy: -5 - (i % 3), t: 0, quiet: true });
+    return;
+  }
   if (what === 'coin') { coinPops.push({ x: x + 4, y: y - 14, vy: -5, t: 0 }); addCoin(); return; }
   let type = what;
   if (what === 'power') type = M.power === 0 ? 'mushroom' : 'flower';
@@ -725,7 +747,7 @@ function updateFx() {
   parts = parts.filter(p => p.puff ? p.t < 12 : p.y < H + 16);
   for (const c of coinPops) {
     c.t++; c.vy += 0.35; c.y += c.vy;
-    if (c.t === 28) pops.push({ x: c.x - 4, y: c.y, text: '200', t: 0 });
+    if (c.t === 28 && !c.quiet) pops.push({ x: c.x - 4, y: c.y, text: '200', t: 0 });
   }
   coinPops = coinPops.filter(c => c.t < 28);
   for (const p of pops) p.t++;
@@ -736,11 +758,13 @@ function updateFx() {
 
 // ---------------------------------------------------------------- main step
 function updatePlay() {
+  if (game.room && game.prize) game.prize++;
+  if (game.room && game.prize > 60 && (input.startP || input.tapP)) { startIntro(); return; }
   if (input.startP && M.state === 'normal') { game.paused = !game.paused; SFX.pause(); }
   if (game.paused) return;
   if (game.freeze > 0) { game.freeze--; return; }
   if (M.state === 'dead') { updateMario(); return; }
-  if (M.state === 'normal') {
+  if (M.state === 'normal' && !game.room) {
     if (++game.tick % 24 === 0 && game.time > 0) {
       game.time--;
       if (game.time === 100) seq([1047, 0, 1047, 0, 1047], .08, { vol: .04 });
@@ -754,7 +778,7 @@ function updatePlay() {
   updateItems();
   updateFireballs();
   updateFx();
-  if (M.state === 'normal' || M.state === 'walk') {
+  if (!game.room && (M.state === 'normal' || M.state === 'walk')) {
     if (M.x - camX > 112) camX = M.x - 112;
     camX = Math.min(camX, LW * T - W);
   }
@@ -792,7 +816,7 @@ function drawHUD() {
   text('×' + String(game.coins).padStart(2, '0'), 97, 24);
   text('WORLD', 144, 16); text('1-1', 152, 24);
   text('TIME', 200, 16);
-  if (game.state === 'play') text(String(Math.max(0, game.time)).padStart(3, '0'), 208, 24);
+  if (game.state === 'play' && !game.room) text(String(Math.max(0, game.time)).padStart(3, '0'), 208, 24);
 }
 
 function puffs(x, yBottom, n, fill, line) {
@@ -858,7 +882,7 @@ function drawTiles(cx) {
     const b = bumps.find(b => b.tx === tx && b.ty === ty);
     if (b) sy -= Math.round(Math.sin(b.t / 10 * Math.PI) * 5);
     switch (c) {
-      case 'X': ctx.drawImage(spr('ground', 'tile'), sx, sy); break;
+      case 'X': ctx.drawImage(spr(game.room ? 'brick' : 'ground', game.room ? 'tileU' : 'tile'), sx, sy); break;
       case 'B': ctx.drawImage(spr('brick', 'tile'), sx, sy); break;
       case '?': ctx.drawImage(spr('question', q), sx, sy); break;
       case 'U': ctx.drawImage(spr('used', 'tile'), sx, sy); break;
@@ -992,8 +1016,8 @@ function drawFx(cx) {
 }
 function drawWorld() {
   const cx = Math.round(camX);
-  ctx.fillStyle = '#5c94fc'; ctx.fillRect(0, 0, W, H);
-  drawDecor(cx);
+  ctx.fillStyle = game.room ? '#000' : '#5c94fc'; ctx.fillRect(0, 0, W, H);
+  if (!game.room) drawDecor(cx);
   drawItems(cx);
   drawFlag(cx);
   drawCastle(cx);
@@ -1036,9 +1060,26 @@ function render() {
   } else if (game.paused) {
     text('PAUSE', 128, 100, '#fcfcfc', 'center');
   } else if (M && M.state === 'done') {
-    text('THANK YOU MARIO!', 128, 72, '#fcfcfc', 'center');
-    text('COURSE CLEAR', 128, 92, '#fcfcfc', 'center');
-    if ((game.frame >> 4) & 1) text('PRESS START TO PLAY AGAIN', 128, 112, '#fcfcfc', 'center');
+    text('COURSE CLEAR!', 128, 72, '#fcfcfc', 'center');
+    const touch = matchMedia('(pointer:coarse)').matches;
+    if ((game.frame >> 4) & 1) {
+      text(touch ? 'TAP A TO CLAIM' : 'HIT SPACE BAR TO CLAIM', 128, 96, '#fcfcfc', 'center');
+      text('YOUR PRIZE', 128, 108, '#fcfcfc', 'center');
+    }
+  } else if (game.room && game.prize) {
+    const a = Math.min(1, game.prize / 30);
+    ctx.save(); ctx.globalAlpha = a;
+    ctx.fillStyle = '#fcfcfc'; ctx.fillRect(14, 66, 228, 60);
+    ctx.fillStyle = '#c84c0c'; ctx.fillRect(16, 68, 224, 56);
+    ctx.restore();
+    if (game.prize > 20) {
+      const gold = (game.frame >> 3) & 1 ? '#fc9838' : '#fcfcfc';
+      text('CONGRATS UNCLE MICAH', 128, 78, gold, 'center');
+      text('NEXT LEVEL COMING', 128, 96, '#fcfcfc', 'center');
+      text('MAY 2027', 128, 108, '#fcfcfc', 'center');
+    }
+    if (game.prize > 60 && (game.frame >> 4) & 1)
+      text(matchMedia('(pointer:coarse)').matches ? 'TAP SCREEN TO PLAY AGAIN' : 'ENTER TO PLAY AGAIN', 128, 220, '#fcbcb0', 'center');
   }
 }
 
