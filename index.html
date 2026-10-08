@@ -183,10 +183,11 @@ const SFX = {
 
 // ---------------------------------------------------------------- pixel art
 const PAL = {
-  mario: { R:'#b13425', B:'#6a6b04', S:'#e39d25' },
-  fire:  { R:'#fcfcfc', B:'#d82800', S:'#fca044' },
-  starA: { R:'#0c9300', B:'#000000', S:'#fca044' },
-  starB: { R:'#d82800', B:'#fca044', S:'#fcfcfc' },
+  // R = jeans, B = jacket/shoes, S = skin, H = hair & mustache, K = glasses
+  mario: { R:'#2a3550', B:'#45454f', S:'#eaa878', H:'#5a3418', K:'#000000' },
+  fire:  { R:'#fcfcfc', B:'#d82800', S:'#eaa878', H:'#5a3418', K:'#000000' },
+  starA: { R:'#0c9300', B:'#000000', S:'#fca044', H:'#000000', K:'#fcfcfc' },
+  starB: { R:'#d82800', B:'#fca044', S:'#fcfcfc', H:'#d82800', K:'#000000' },
   goomba:{ G:'#c84c0c', K:'#000000', W:'#fcbcb0', T:'#fcbcb0' },
   koopa: { G:'#00a800', W:'#fcfcfc', Y:'#fca044', K:'#000000' },
   mush:  { R:'#d82800', W:'#fcbcb0', K:'#000000' },
@@ -329,6 +330,18 @@ ART.stair = (() => { const r = []; for (let y = 0; y < 16; y++) { let s = '';
     else if (x >= 3 && x <= 12 && y >= 3 && y <= 12) c = (x === 3 || y === 3) ? 'L' : (x === 12 || y === 12) ? 'D' : 'O';
     s += c;
   } r.push(s); } return r; })();
+
+// Custom head: messy hair, glasses, mustache
+const SMALL_HEAD = [
+'....H.HHH.H.....','...HHHHHHHHH....','..HHHHHHHHHHH...','..HKKKKSKKKKSS..',
+'..HKSSKKKSSKSS..','...SSSHHHHSSS...','....SSSSSSSS....'];
+const BIG_HEAD = [
+'....HH.HHHH.H...','...HHHHHHHHHHH..','..HHHHHHHHHHHHH.','..HHHSSSSSSSSHH.',
+'..HKKKKKSKKKKKS.','..HKSSSKKKSSSKS.','..HSKKKKSKKKKSS.','..SSSSHHHHHSSSS.',
+'....SSSSSSSSS...'];
+for (const n of ['s_stand', 's_walk1', 's_walk2', 's_dead']) ART[n] = SMALL_HEAD.concat(ART[n].slice(7));
+ART.s_jump = SMALL_HEAD.map(r => '.' + r.slice(0, 15)).concat(['................'], ART.s_jump.slice(8));
+for (const n of ['b_stand', 'b_walk1', 'b_walk2', 'b_jump', 'b_crouch']) ART[n] = BIG_HEAD.concat(ART[n].slice(9));
 
 const sprCache = {};
 function spr(name, pal) {
