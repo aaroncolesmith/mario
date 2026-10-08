@@ -1220,7 +1220,6 @@ function render() {
       ctx.drawImage(spr(c.id + '_b_' + f, c.id + '_mario'), x, y, 32, 64);
       text(c.name, i * 64 + 32, 152, sel ? '#fc9838' : '#fcfcfc', 'center');
     });
-    text(CH().title, 128, 176, '#fcbcb0', 'center');
     const touch = matchMedia('(pointer:coarse)').matches;
     if ((game.frame >> 4) & 1) text(touch ? 'TAP TO CHOOSE, TAP AGAIN' : '\u2190 \u2192 CHOOSE   ENTER START', 128, 204, '#fcfcfc', 'center');
     if (touch && (game.frame >> 4) & 1) text('TO START', 128, 216, '#fcfcfc', 'center');
