@@ -21,6 +21,10 @@
   #tc .ab button{background:rgba(216,40,0,.45)}
   #tc .ab button.on{background:rgba(216,40,0,.8)}
   #tc .ab button[data-k=jump]{margin-bottom:28px}
+  #prize{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+    background:rgba(0,0,0,.85);opacity:0;pointer-events:none;transition:opacity 1.5s ease}
+  #prize.show{opacity:1;pointer-events:auto}
+  #prize img{max-width:92vw;max-height:88vh;border:4px solid #fcfcfc;box-shadow:0 0 0 4px #c84c0c;image-rendering:auto}
   @media (pointer:coarse){
     #tc{display:flex}
     @media (orientation:portrait){#wrap{align-items:flex-start;padding-top:env(safe-area-inset-top)}}
@@ -29,6 +33,7 @@
 </head>
 <body>
 <div id="wrap"><canvas id="game" width="256" height="240"></canvas></div>
+<div id="prize"><img src="prize.jpg" alt=""></div>
 <div id="tc">
   <div class="grp"><button data-k="left">&#9664;</button><button data-k="down">&#9660;</button><button data-k="right">&#9654;</button></div>
   <div class="grp ab"><button data-k="run">B</button><button data-k="jump">A</button></div>
@@ -78,7 +83,8 @@ document.querySelectorAll('#tc button').forEach(b => {
   b.addEventListener('pointerup', off); b.addEventListener('pointercancel', off); b.addEventListener('pointerleave', off);
   b.addEventListener('contextmenu', e => e.preventDefault());
 });
-let canvasTap = false;
+let canvasTap = false, prizeTap = false;
+document.getElementById('prize').addEventListener('pointerdown', () => { if (game.prize > 360) prizeTap = true; });
 cv.addEventListener('pointerdown', () => { audio(); canvasTap = true; });
 function readInput() {
   for (const a of ACTIONS) {
@@ -86,6 +92,7 @@ function readInput() {
     input[a] = h; input[a + 'P'] = h && !prevIn[a];
   }
   input.tapP = canvasTap; canvasTap = false;
+  if (prizeTap && game.state !== 'play') prizeTap = false;
 }
 function endInput() { for (const a of ACTIONS) prevIn[a] = input[a]; }
 
@@ -403,7 +410,7 @@ try { game.hi = +localStorage.getItem('smb11_hi') || 0; } catch (e) {}
 let M, camX = 0, enemies = [], items = [], fireballs = [], parts = [], pops = [], coinPops = [], bumps = [], spawnIdx = 0;
 
 function newGame() { game.score = 0; game.coins = 0; game.lives = 3; startIntro(); }
-function startIntro() { game.state = 'intro'; game.timer = 150; }
+function startIntro() { document.getElementById('prize').classList.remove('show'); game.state = 'intro'; game.timer = 150; }
 function resetLevel() {
   buildLevel();
   M = { x: 40, y: 13 * T - 16, w: 12, h: 16, vx: 0, vy: 0, facing: 1, onGround: true, power: 0,
@@ -758,8 +765,11 @@ function updateFx() {
 
 // ---------------------------------------------------------------- main step
 function updatePlay() {
-  if (game.room && game.prize) game.prize++;
-  if (game.room && game.prize > 60 && (input.startP || input.tapP)) { startIntro(); return; }
+  if (game.room && game.prize) {
+    game.prize++;
+    if (game.prize === 240) document.getElementById('prize').classList.add('show');
+  }
+  if (game.room && game.prize > 60 && (input.startP || input.tapP || prizeTap)) { startIntro(); return; }
   if (input.startP && M.state === 'normal') { game.paused = !game.paused; SFX.pause(); }
   if (game.paused) return;
   if (game.freeze > 0) { game.freeze--; return; }
